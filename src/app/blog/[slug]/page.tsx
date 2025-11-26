@@ -136,9 +136,9 @@ export default async function BlogDetailPage({ params }: { params: Promise<{ slu
     createdAt: string;
   };
 
-  const relatedPosts: RelatedPost[] = relatedPostsData.map((p) => ({
+  const relatedPosts: RelatedPost[] = relatedPostsData.map((p: any) => ({
     ...p,
-    createdAt: p.createdAt.toISOString(),
+    createdAt: (p.createdAt as Date).toISOString(),
   }));
 
   // Category display names
