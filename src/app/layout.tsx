@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import AuthProvider from "@/components/providers/AuthProvider";
+import GaClient from '@/components/analytics/GaClient';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -48,6 +49,7 @@ export default async function RootLayout({
   return (
     <html lang="vi">
       <body className={`${montserrat.variable} ${inter.variable} antialiased`}>
+        <GaClient />
         <AuthProvider session={session}>
           <Navbar user={user} />
           <main className="min-h-screen pt-16">
