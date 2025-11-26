@@ -91,7 +91,7 @@ export default function HoroscopePage() {
               <div className="bg-red-500/10 border-2 border-red-500/30 rounded-2xl p-6">
                 <div className="flex items-start space-x-3">
                   <svg
-                    className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5"
+                    className="w-6 h-6 text-red-400 shrink-0 mt-0.5"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >

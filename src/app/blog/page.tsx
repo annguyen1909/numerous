@@ -27,7 +27,18 @@ export default async function BlogPage() {
   });
 
   // Convert dates to serializable format
-  const allPosts = allPostsData.map((post) => ({
+  type BlogPostRaw = {
+    id: string;
+    title: string;
+    slug: string;
+    excerpt: string | null;
+    category: string | null;
+    views: number;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+
+  const allPosts = allPostsData.map((post: BlogPostRaw) => ({
     ...post,
     createdAt: post.createdAt.toISOString(),
     updatedAt: post.updatedAt.toISOString(),
@@ -35,6 +46,17 @@ export default async function BlogPage() {
 
   const featuredPost = allPosts[0];
   const remainingPosts = allPosts.slice(1);
+
+  type BlogPost = {
+    id: string;
+    title: string;
+    slug: string;
+    excerpt: string | null;
+    category: string | null;
+    views: number;
+    createdAt: string;
+    updatedAt: string;
+  };
 
   // Category display names
   const categoryNames: Record<string, string> = {
@@ -118,7 +140,7 @@ export default async function BlogPage() {
           {/* Blog Posts Grid */}
           <h2 className="text-2xl font-bold text-[#fafafa] mb-6">Tất Cả Bài Viết</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {remainingPosts.map((post) => (
+            {remainingPosts.map((post: BlogPost) => (
               <article
                 key={post.id}
                 className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow"

@@ -172,7 +172,7 @@ export default function PremiumPaymentForm({ userId }: PremiumPaymentFormProps) 
       </div>
 
       {/* QR Code Display */}
-      <div className="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-8">
+      <div className="bg-linear-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl p-8">
         <h3 className="text-2xl font-bold text-purple-900 mb-6 text-center">
           Bước 1: Quét Mã QR Để Thanh Toán
         </h3>
