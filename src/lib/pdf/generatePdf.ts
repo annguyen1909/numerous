@@ -151,7 +151,7 @@ export async function generatePdfBuffer(input: PdfGeneratorInput): Promise<Buffe
       if (!para.trim()) continue;
       
       // Handle single newlines within paragraph
-      const sentences = para.split('\n').filter(s => s.trim());
+      const sentences = para.split('\n').filter((s: string) => s.trim());
       for (const sentence of sentences) {
         const lines = splitLines(sentence, 85);
         for (const line of lines) {

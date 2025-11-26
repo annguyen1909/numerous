@@ -68,13 +68,13 @@ export default async function ReportsPage() {
           <div className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-xl shadow-md p-6">
             <p className="text-sm text-[#a1a1aa] mb-1">Thần Số Học</p>
             <p className="text-3xl font-bold text-[#8B5CF6]">
-              {reports.filter((r) => r.type === 'numerology').length}
+                {reports.filter((r: any) => r.type === 'numerology').length}
             </p>
           </div>
           <div className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-xl shadow-md p-6">
             <p className="text-sm text-[#a1a1aa] mb-1">Tử Vi</p>
             <p className="text-3xl font-bold text-[#FFAC33]">
-              {reports.filter((r) => r.type === 'horoscope').length}
+              {reports.filter((r: any) => r.type === 'horoscope').length}
             </p>
           </div>
         </div>

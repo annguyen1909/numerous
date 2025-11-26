@@ -83,8 +83,8 @@ export function calculateExpressionNumber(fullName: string): number {
   
   const sum = cleanName
     .split('')
-    .filter(char => char !== ' ')
-    .reduce((total, char) => total + letterToNumber(char), 0);
+    .filter((char: string) => char !== ' ')
+    .reduce((total, char: string) => total + letterToNumber(char), 0);
   
   return reduceToSingleDigit(sum);
 }
@@ -99,8 +99,8 @@ export function calculateSoulUrgeNumber(fullName: string): number {
   
   const sum = cleanName
     .split('')
-    .filter(char => vowels.includes(char))
-    .reduce((total, char) => total + letterToNumber(char), 0);
+    .filter((char: string) => vowels.includes(char))
+    .reduce((total, char: string) => total + letterToNumber(char), 0);
   
   return reduceToSingleDigit(sum);
 }
@@ -115,8 +115,8 @@ export function calculatePersonalityNumber(fullName: string): number {
   
   const sum = cleanName
     .split('')
-    .filter(char => !vowels.includes(char))
-    .reduce((total, char) => total + letterToNumber(char), 0);
+    .filter((char: string) => !vowels.includes(char))
+    .reduce((total, char: string) => total + letterToNumber(char), 0);
   
   return reduceToSingleDigit(sum);
 }
