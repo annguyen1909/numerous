@@ -53,7 +53,7 @@ export default function Navbar({ user }: NavbarProps) {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
-            {navLinks.map((link) => (
+            {navLinks.map((link: { href: string; label: string }) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -132,7 +132,7 @@ export default function Navbar({ user }: NavbarProps) {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="md:hidden pb-4 space-y-1">
-            {navLinks.map((link) => (
+            {navLinks.map((link: { href: string; label: string }) => (
               <Link
                 key={link.href}
                 href={link.href}

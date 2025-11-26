@@ -162,7 +162,7 @@ export default function HoroscopePage() {
               { name: 'Ma Kết', icon: '♑', dates: '22/12 - 19/1' },
               { name: 'Bảo Bình', icon: '♒', dates: '20/1 - 18/2' },
               { name: 'Song Ngư', icon: '♓', dates: '19/2 - 20/3' },
-            ].map((sign) => (
+            ].map((sign: { name: string; icon: string; dates: string }) => (
               <div
                 key={sign.name}
                 className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-lg p-4 text-center shadow-md hover:shadow-lg transition-shadow"

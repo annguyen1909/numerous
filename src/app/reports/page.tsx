@@ -28,7 +28,7 @@ export default async function ReportsPage() {
   });
 
   // Convert dates to serializable format
-  const reports = reportsData.map((report) => ({
+  const reports = reportsData.map((report: any) => ({
     ...report,
     createdAt: report.createdAt.toISOString(),
   }));
@@ -83,7 +83,7 @@ export default async function ReportsPage() {
         <div className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-xl shadow-md p-6">
           {reports.length > 0 ? (
             <div className="space-y-3">
-              {reports.map((report) => (
+              {reports.map((report: any) => (
                 <div
                   key={report.id}
                   className="p-4 border border-[#3f3f46]/40 rounded-lg hover:border-[#6B4BFF] hover:shadow-md transition-all"

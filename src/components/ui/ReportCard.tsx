@@ -128,7 +128,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
                 </h3>
               </div>
               <div className="prose prose-lg max-w-none text-[#d4d4d8] leading-relaxed space-y-4">
-                {displayContent.split('\n\n').map((paragraph, idx) => (
+                {displayContent.split('\n\n').map((paragraph: string, idx: number) => (
                   <p key={idx} className="text-base leading-relaxed">
                     {paragraph}
                   </p>
@@ -267,7 +267,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
               Những con số này mang năng lượng tích cực, phù hợp với bạn. Sử dụng chúng trong các quyết định quan trọng, chọn ngày tháng, số điện thoại, hoặc số nhà để tăng may mắn.
             </p>
             <div className="flex flex-wrap gap-3">
-              {numerologyData.luckyNumbers.map((num) => (
+              {numerologyData.luckyNumbers.map((num: number) => (
                 <div
                   key={num}
                   className="w-12 h-12 bg-yellow-400 text-yellow-900 rounded-lg flex items-center justify-center text-xl font-bold shadow-md"
@@ -287,7 +287,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
               Những màu sắc này hài hòa với năng lượng của bạn. Sử dụng chúng trong trang phục, trang trí không gian sống hoặc làm việc để tăng cường sức mạnh cá nhân.
             </p>
             <div className="flex flex-wrap gap-2">
-              {numerologyData.luckyColors.map((color) => (
+              {numerologyData.luckyColors.map((color: string) => (
                 <span
                   key={color}
                   className="px-4 py-2 bg-linear-to-r from-purple-100 to-pink-100 text-purple-900 rounded-full text-sm font-medium border border-purple-200"
@@ -310,7 +310,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
               Đây là những phẩm chất tự nhiên và tài năng bẩm sinh của bạn. Hãy tận dụng và phát triển những điểm mạnh này để đạt được thành công trong cuộc sống và sự nghiệp.
             </p>
             <ul className="space-y-2">
-              {numerologyData.strengths.slice(0, 4).map((strength, index) => (
+              {numerologyData.strengths.slice(0, 4).map((strength: string, index: number) => (
                 <li key={index} className="flex items-start text-sm text-[#d4d4d8]">
                   <svg
                     className="w-5 h-5 text-green-400 mr-2 shrink-0 mt-0.5"
@@ -338,7 +338,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
               Nhận thức về điểm yếu là bước đầu tiên để cải thiện. Không ai hoàn hảo, và việc làm việc với những khía cạnh này sẽ giúp bạn phát triển toàn diện hơn.
             </p>
             <ul className="space-y-2">
-              {numerologyData.weaknesses.slice(0, 4).map((weakness, index) => (
+              {numerologyData.weaknesses.slice(0, 4).map((weakness: string, index: number) => (
                 <li key={index} className="flex items-start text-sm text-[#d4d4d8]">
                   <svg
                     className="w-5 h-5 text-orange-400 mr-2 shrink-0 mt-0.5"
@@ -368,7 +368,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
             Dựa trên phân tích thần số học, những lĩnh vực nghề nghiệp này phù hợp với tính cách, tài năng và khao khát của bạn. Tuy nhiên, đừng giới hạn bản thân - thành công đến từ đam mê và nỗ lực.
           </p>
           <div className="flex flex-wrap gap-2">
-            {numerologyData.career.map((job, index) => (
+            {numerologyData.career.map((job: string, index: number) => (
               <span
                 key={index}
                 className="px-4 py-2 bg-blue-500/20 text-blue-300 rounded-lg text-sm font-medium border border-blue-500/30"
@@ -442,7 +442,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
               </h3>
             </div>
             <div className="prose prose-lg max-w-none text-[#d4d4d8] leading-relaxed space-y-6">
-              {displayContent.split('\n').map((line, idx) => {
+              {displayContent.split('\n').map((line: string, idx: number) => {
                 // Check if line is a section header (starts with ##)
                 if (line.trim().startsWith('## ')) {
                   const title = line.replace(/^##\s+/, '').trim();
@@ -516,7 +516,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-md border border-[#3f3f46]">
           <h4 className="text-lg font-bold text-[#fafafa] mb-4 flex items-center"><Sparkles className="w-5 h-5 mr-2" /> Thời Kỳ May Mắn</h4>
           <ul className="space-y-2">
-            {horoscopeData.luckyPeriods.map((period, index) => (
+            {horoscopeData.luckyPeriods.map((period: string, index: number) => (
               <li key={index} className="text-sm text-[#d4d4d8] flex items-center">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                 {period}
@@ -528,7 +528,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-md border border-[#3f3f46]">
           <h4 className="text-lg font-bold text-[#fafafa] mb-4 flex items-center"><AlertTriangle className="w-5 h-5 mr-2" /> Thách Thức</h4>
           <ul className="space-y-2">
-            {horoscopeData.challenges.map((challenge, index) => (
+            {horoscopeData.challenges.map((challenge: string, index: number) => (
               <li key={index} className="text-sm text-[#d4d4d8] flex items-center">
                 <span className="w-2 h-2 bg-orange-500 rounded-full mr-2"></span>
                 {challenge}

@@ -158,7 +158,7 @@ export default function AdminPaymentsList() {
         </div>
       ) : (
         <div className="space-y-4">
-          {payments.map((payment) => {
+          {payments.map((payment: Payment) => {
             const notes = parseNotes(payment.notes);
             return (
               <div key={payment.id} className="bg-white rounded-lg shadow-md p-6">
