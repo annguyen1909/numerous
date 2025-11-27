@@ -3,7 +3,7 @@
  * Upload and manage files in Supabase Storage
  */
 
-import { supabaseServer } from './server';
+import { getSupabaseServer } from './server';
 
 const PDF_BUCKET = 'pdf-reports';
 
@@ -23,7 +23,7 @@ export async function uploadPdfToSupabase(
     const filePath = `${userId}/${fileName}`;
 
     // Upload to Supabase Storage
-    const { data, error } = await supabaseServer.storage
+    const { data, error } = await getSupabaseServer().storage
       .from(PDF_BUCKET)
       .upload(filePath, buffer, {
         contentType: 'application/pdf',
@@ -37,7 +37,7 @@ export async function uploadPdfToSupabase(
     }
 
     // Generate signed URL (valid for 1 year)
-    const { data: signedUrlData } = await supabaseServer.storage
+    const { data: signedUrlData } = await getSupabaseServer().storage
       .from(PDF_BUCKET)
       .createSignedUrl(filePath, 31536000); // 1 year in seconds
 
@@ -59,7 +59,7 @@ export async function uploadPdfToSupabase(
  * Delete PDF from Supabase Storage
  */
 export async function deletePdfFromSupabase(filePath: string): Promise<void> {
-  const { error } = await supabaseServer.storage
+  const { error } = await getSupabaseServer().storage
     .from(PDF_BUCKET)
     .remove([filePath]);
 
@@ -73,7 +73,7 @@ export async function deletePdfFromSupabase(filePath: string): Promise<void> {
  * Get signed URL for existing PDF
  */
 export async function getSignedUrl(filePath: string, expiresIn: number = 3600): Promise<string> {
-  const { data, error } = await supabaseServer.storage
+  const { data, error } = await getSupabaseServer().storage
     .from(PDF_BUCKET)
     .createSignedUrl(filePath, expiresIn);
 

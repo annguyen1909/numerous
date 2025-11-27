@@ -10,6 +10,9 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/db/prisma';
 import { generatePdfBuffer } from '@/lib/pdf/generatePdf';
 
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   try {
     // 1. Check authentication
@@ -90,6 +93,9 @@ export async function GET(request: NextRequest) {
 
     // 7. Generate PDF from report content
     console.log('📄 Generating PDF for report:', reportId);
+    if (process.env.PDF_DEBUG === '1') {
+      console.log('[PDF_DEBUG] raw content length=', (contentText||'').length, 'paragraphs=', paragraphs.length);
+    }
     
     // Split content into logical sections for better PDF readability
     const contentText = report.content;
@@ -179,6 +185,8 @@ export async function GET(request: NextRequest) {
       birthDate,
       readingType,
       content: contentObject,
+      minPages: 7,
+      brandName: 'Numerous Premium'
     });
 
     // 8. Return PDF as downloadable file

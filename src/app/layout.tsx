@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Montserrat } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -14,11 +14,10 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-const montserrat = Montserrat({
+const playfair = Playfair_Display({
   subsets: ["latin"],
-  weight: ['400', '500', '600', '700'],
   display: 'swap',
-  variable: '--font-montserrat',
+  variable: '--font-playfair',
 });
 
 export const metadata: Metadata = {
@@ -26,6 +25,7 @@ export const metadata: Metadata = {
   description: "Phân tích Thần số học và Tử vi chuyên nghiệp với AI. Nhận báo cáo miễn phí về số đường đời, tính cách, vận mệnh và dự đoán tương lai.",
   keywords: ["thần số học", "numerology", "tử vi", "horoscope", "cung hoàng đạo", "con giáp", "phong thủy"],
   authors: [{ name: "Thần Số Học" }],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'),
   openGraph: {
     title: "Thần Số Học & Tử Vi - Khám phá con số của bạn",
     description: "Phân tích Thần số học và Tử vi chuyên nghiệp với AI",
@@ -48,7 +48,7 @@ export default async function RootLayout({
 
   return (
     <html lang="vi">
-      <body className={`${montserrat.variable} ${inter.variable} antialiased`}>
+      <body className={`${playfair.variable} ${inter.variable} antialiased`}>
         <GaClient />
         <AuthProvider session={session}>
           <Navbar user={user} />

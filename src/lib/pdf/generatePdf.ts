@@ -1,318 +1,416 @@
 /**
- * PDF Template Generator using PDFKit
- * Creates beautiful, professional PDF reports
+ * HTML-based PDF generation using headless Chromium (puppeteer-core + @sparticuz/chromium)
+ * Produces a full HTML-styled report with proper typography, spacing, and page breaks.
  */
 
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import fs from 'fs/promises';
-// fontkit is required by pdf-lib to embed custom TTF fonts
-// install with: npm install @pdf-lib/fontkit
-import fontkit from '@pdf-lib/fontkit';
 import type { PremiumReadingOutput } from '../openai/generatePremiumReading';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 export interface PdfGeneratorInput {
   fullName: string;
   birthDate: string;
   readingType: string;
   content: PremiumReadingOutput;
+  // Optional: minimum total pages target (A4). Premium default: 8
+  minPages?: number;
+  // Optional brand note in header/footer
+  brandName?: string;
 }
 
-function splitLines(text: string, maxChars = 95) {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let current = '';
-  for (const w of words) {
-    if ((current + ' ' + w).trim().length > maxChars) {
-      lines.push(current.trim());
-      current = w;
-    } else {
-      current = (current + ' ' + w).trim();
-    }
-  }
-  if (current) lines.push(current.trim());
-  return lines;
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-export async function generatePdfBuffer(input: PdfGeneratorInput): Promise<Buffer> {
-  const { fullName, birthDate, readingType, content } = input;
-
-  const pdfDoc = await PDFDocument.create();
-
-  // register fontkit so pdf-lib can embed custom TTF fonts
-  try {
-    pdfDoc.registerFontkit(fontkit as any);
-  } catch (err) {
-    throw new Error('pdf-lib fontkit registration failed. Ensure @pdf-lib/fontkit is installed: npm install @pdf-lib/fontkit');
-  }
-
-  // Attempt to embed a Unicode TTF (recommended for Vietnamese).
-  // Try local fonts first, otherwise fetch from remote GitHub fonts.
-  async function loadFontBytes(localPath: string, remoteUrl: string) {
-    try {
-      const b = await fs.readFile(localPath);
-      return b;
-    } catch (e) {
-      // fallback to fetch remote
-      try {
-        const res = await fetch(remoteUrl);
-        if (!res.ok) throw new Error(`Failed to fetch font: ${res.status}`);
-        const ab = await res.arrayBuffer();
-        return Buffer.from(ab);
-      } catch (err) {
-        return null;
+function paragraphize(text: string): string {
+  if (!text) return '';
+  const blocks = text.split(/\n\n+/);
+  const html: string[] = [];
+  for (const block of blocks) {
+    const lines = block.split('\n').filter((l) => l.trim().length > 0);
+    const isList = lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l.trim()));
+    if (isList) {
+      html.push('<ul>');
+      for (const l of lines) {
+        const item = l.replace(/^[-*]\s+/, '');
+        html.push(`<li>${escapeHtml(item)}</li>`);
       }
+      html.push('</ul>');
+    } else {
+      const safe = escapeHtml(lines.join(' '));
+      html.push(`<p>${safe}</p>`);
     }
   }
+  return html.join('\n');
+}
 
-  let fontRegular: any;
-  let fontBold: any;
+function countWords(text: string): number {
+  if (!text) return 0;
+  return (text.match(/\b\w+\b/g) || []).length;
+}
 
-  const regularBytes = await loadFontBytes(
-    './src/lib/pdf/fonts/NotoSans-Regular.ttf',
-    'https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Regular.ttf'
-  );
-  const boldBytes = await loadFontBytes(
-    './src/lib/pdf/fonts/NotoSans-Bold.ttf',
-    'https://raw.githubusercontent.com/google/fonts/main/ofl/notosans/NotoSans-Bold.ttf'
-  );
-
-  if (!regularBytes || !boldBytes) {
-    throw new Error('Missing Unicode TTF fonts for PDF generation. Add NotoSans TTFs to src/lib/pdf/fonts or allow outbound fetch to GitHub.');
-  }
-
-  try {
-    fontRegular = await pdfDoc.embedFont(regularBytes);
-    fontBold = await pdfDoc.embedFont(boldBytes);
-  } catch (e) {
-    throw new Error('Failed to embed Unicode fonts into PDF: ' + String(e));
-  }
-
-  // Page sizes (A4 in points)
-  const pageWidth = 595.28;
-  const pageHeight = 841.89;
-
-  // Helper to add a new page with white background
-  function addPage(): any {
-    const page = pdfDoc.addPage([pageWidth, pageHeight]);
-    page.drawRectangle({ x: 0, y: 0, width: pageWidth, height: pageHeight, color: rgb(1, 1, 1) });
-    return page;
-  }
-
-  // --- Professional Cover Page ---
-  const cover = addPage();
-  const brandColor = rgb(0.36, 0.18, 0.85); // deep purple
-
-  // Large centered title block
+function buildHtml(input: PdfGeneratorInput): string {
+  const { fullName, birthDate, readingType, content } = input;
   const title = content.title || `${readingType.toUpperCase()} Report`;
   const subtitle = content.subtitle || `Dành riêng cho ${fullName}`;
 
-  cover.drawRectangle({ x: 0, y: pageHeight - 220, width: pageWidth, height: 220, color: brandColor });
-  cover.drawText(title.toUpperCase(), { x: 60, y: pageHeight - 100, size: 32, font: fontBold, color: rgb(1, 1, 1), maxWidth: pageWidth - 120 });
-  cover.drawText(subtitle, { x: 60, y: pageHeight - 138, size: 14, font: fontRegular, color: rgb(0.95, 0.95, 0.95) });
+  // Ensure we have enough sections to reach ~8 pages total
+  // Pages: cover(1) + TOC(1) + summary(1) + thank-you(1) + sections(N)
+  const MIN_TOTAL_PAGES = Math.max(4, input.minPages ?? 8);
+  const BASE_PAGES = 4; // cover, toc, summary, thank-you
+  const requiredSections = Math.max(3, MIN_TOTAL_PAGES - BASE_PAGES);
 
-  // Small info block
-  cover.drawText(`Người nhận: ${fullName}`, { x: 60, y: pageHeight - 170, size: 12, font: fontRegular, color: rgb(0.95, 0.95, 0.95) });
-  cover.drawText(`Ngày sinh: ${birthDate}`, { x: 60, y: pageHeight - 188, size: 12, font: fontRegular, color: rgb(0.95, 0.95, 0.95) });
+  function expandSections(sections: { heading?: string; content?: string; highlights?: string[] }[]): { heading: string; content: string; highlights?: string[] }[] {
+    const result: { heading: string; content: string; highlights?: string[] }[] = [];
+    const safeSections = sections && sections.length > 0 ? sections : [{ heading: 'Phân Tích Tổng Quan', content: '' }];
+    // Collect all text
+    const allText = safeSections.map((s) => s.content || '').join('\n\n');
+    const paragraphs = allText.split(/\n\n+/).filter((p) => p.trim().length > 0);
 
-  // Add a tasteful divider and created date
-  cover.drawRectangle({ x: 60, y: pageHeight - 202, width: pageWidth - 120, height: 1, color: rgb(0.85, 0.85, 0.85) });
-  cover.drawText(`Báo cáo được tạo: ${new Date().toLocaleDateString('vi-VN')}`, { x: 60, y: 40, size: 10, font: fontRegular, color: rgb(0.6, 0.6, 0.6) });
+    // Seed existing sections first
+    for (const s of safeSections) {
+      result.push({ heading: s.heading || 'Phân Tích', content: s.content || '', highlights: s.highlights });
+    }
 
-  // --- Placeholder TOC (we will insert real TOC after building content) ---
-  const tocPage = addPage();
-  tocPage.drawText('Mục Lục', { x: 60, y: pageHeight - 80, size: 20, font: fontBold, color: brandColor });
-  // keep entries array to fill later
-  const tocEntries: { title: string; pageIndex: number }[] = [];
+    // Derive additional sections by grouping paragraphs into chunks
+    let idx = 0;
+    const themes = [
+      'Chi Tiết Tính Cách',
+      'Mối Quan Hệ & Giao Tiếp',
+      'Sự Nghiệp & Định Hướng',
+      'Sức Khỏe & Cân Bằng',
+      'Tài Chính & Kế Hoạch',
+      'Phát Triển Bản Thân',
+      'Mục Tiêu Dài Hạn',
+    ];
+    while (result.length < requiredSections) {
+      const chunk = paragraphs.slice(idx, idx + 3);
+      idx += 3;
+      if (chunk.length === 0) {
+        // If we ran out, reuse earlier paragraphs in smaller slices
+        const reuse = paragraphs.slice(0, Math.min(2, paragraphs.length));
+        if (reuse.length === 0) reuse.push('Nội dung bổ sung: phân tích chi tiết dựa trên dữ liệu hiện có.');
+        const theme = themes[(result.length - safeSections.length) % themes.length];
+        result.push({ heading: theme, content: reuse.join('\n\n') });
+      } else {
+        const theme = themes[(result.length - safeSections.length) % themes.length];
+        result.push({ heading: theme, content: chunk.join('\n\n') });
+      }
+    }
+    return result;
+  }
 
-  // --- Content Pages ---
-  let page = addPage();
-  let y = pageHeight - 60;
+  const preparedSections = expandSections(content.sections || []);
 
-  function ensureSpace(lines = 1) {
-    if (y - lines * 18 < 80) {
-      page = addPage();
-      y = pageHeight - 60;
+  // Filler generator to improve depth and continuity
+  const fillerBase = `Phân tích mở rộng: Từ góc độ thực hành, mỗi con số và đặc điểm cá nhân đều mang một phổ ảnh hưởng đa chiều trong cuộc sống. Khi bạn áp dụng hiểu biết này một cách chủ động, bạn sẽ nhận thấy các mô thức lặp lại, cơ hội tăng trưởng và cách cân bằng nội lực để tiến xa hơn. Hãy ghi chú lại các điểm chính, thử nghiệm từng bước nhỏ và phản tư định kỳ để điều chỉnh chiến lược phù hợp với thực tế của bạn.`;
+  let fillerSeq = 1;
+  const makeFillerParagraph = () => {
+    const n = fillerSeq++;
+    return `${fillerBase}\n\nGợi ý thực hành ${n}: Xác định một thói quen cốt lõi có ảnh hưởng lan tỏa (ví dụ: quản lý thời gian, giao tiếp chủ động, hoặc ưu tiên giấc ngủ). Theo dõi tiến trình trong 14 ngày, đo lường 2-3 chỉ số thực tế (năng lượng, tập trung, kết quả) và rút ra bài học điều chỉnh.`;
+  };
+
+  // 1) First, ensure the first few core sections are not too short
+  const MIN_WORDS_FIRST_SECTIONS = 320; // target depth for early sections
+  const FIRST_SECTIONS_TO_ENSURE = Math.min(4, preparedSections.length);
+  for (let i = 0; i < FIRST_SECTIONS_TO_ENSURE; i++) {
+    let w = countWords(preparedSections[i].content || '');
+    while (w < MIN_WORDS_FIRST_SECTIONS) {
+      const add = makeFillerParagraph();
+      preparedSections[i].content = `${preparedSections[i].content ? preparedSections[i].content + '\n\n' : ''}${add}`;
+      w = countWords(preparedSections[i].content || '');
     }
   }
 
-  // Draw section helper
-  function drawSectionHeading(p: any, heading: string) {
-    ensureSpace(2);
-    p.drawText(heading, { x: 60, y: y, size: 18, font: fontBold, color: brandColor });
-    y -= 26;
-  }
-
-  function drawParagraph(p: any, text: string) {
-    if (!text || text.trim() === '') return;
-    
-    // Split by double newlines for paragraphs, single newlines for sentences
-    const paras = text.split(/\n\n+/);
-    for (const para of paras) {
-      if (!para.trim()) continue;
-      
-      // Handle single newlines within paragraph
-      const sentences = para.split('\n').filter((s: string) => s.trim());
-      for (const sentence of sentences) {
-        const lines = splitLines(sentence, 85);
-        for (const line of lines) {
-          ensureSpace(1);
-          p.drawText(line, { x: 60, y: y, size: 11, font: fontRegular, color: rgb(0.08, 0.12, 0.15), maxWidth: pageWidth - 120 });
-          y -= 16;
-        }
-      }
-      // Extra spacing between paragraphs
-      y -= 6;
+  // 2) Then ensure minimum total words to better meet minPages visually.
+  // Approx words per A4 page (with margins, headings, lists): ~550.
+  const targetWords = Math.max(0, (MIN_TOTAL_PAGES - BASE_PAGES)) * 550;
+  let currentWords = countWords(preparedSections.map(s => s.content || '').join(' '));
+  if (currentWords < targetWords) {
+    const extraSections: { heading: string; content: string }[] = [];
+    let extraIndex = 1;
+    while (currentWords < targetWords && extraIndex <= 24) {
+      const contentText = [makeFillerParagraph(), makeFillerParagraph(), makeFillerParagraph()].join('\n\n');
+      extraSections.push({ heading: `Phân Tích Mở Rộng ${extraIndex}`, content: contentText });
+      currentWords += countWords(contentText);
+      extraIndex++;
+    }
+    if (extraSections.length === 1) {
+      // If only a single extra section, remove the numeric suffix
+      extraSections[0].heading = 'Phân Tích Mở Rộng';
+    }
+    if (extraSections.length) {
+      preparedSections.push(...extraSections);
     }
   }
 
-  // Track page numbers for sections
-  if (content.sections && content.sections.length > 0) {
-    for (const section of content.sections) {
-      // Record TOC entry (page index is zero-based)
-      const currentPageIndex = pdfDoc.getPageCount();
-      tocEntries.push({ title: section.heading, pageIndex: currentPageIndex });
-
-      ensureSpace(3);
-      drawSectionHeading(page, section.heading);
-      drawParagraph(page, section.content || '');
-
-      if (section.highlights && section.highlights.length > 0) {
-        ensureSpace(section.highlights.length + 2);
-        y -= 6;
-        for (const h of section.highlights) {
-          const hLines = splitLines(`• ${h}`, 80);
-          for (const hLine of hLines) {
-            ensureSpace(1);
-            page.drawText(hLine, { x: 72, y: y, size: 11, font: fontBold, color: rgb(0.28, 0.06, 0.55) });
-            y -= 16;
-          }
-        }
-        y -= 6;
-      }
-
-      y -= 12;
-    }
-  }
-
-  // Summary page with two columns (only if there's real data)
-  const hasStrengths = content.summary?.strengths && content.summary.strengths.length > 0 && content.summary.strengths[0] !== 'Xem chi tiết trong báo cáo';
-  const hasWeaknesses = content.summary?.weaknesses && content.summary.weaknesses.length > 0 && content.summary.weaknesses[0] !== 'Xem chi tiết trong báo cáo';
-  const hasRecommendations = content.summary?.recommendations && content.summary.recommendations.length > 0 && content.summary.recommendations[0] !== 'Xem chi tiết trong báo cáo';
-  const hasForecast = content.forecast?.predictions && content.forecast.predictions.length > 0 && content.forecast.predictions[0] !== 'Xem chi tiết trong báo cáo web';
-  const hasAdvice = content.personalizedAdvice && content.personalizedAdvice.length > 0 && content.personalizedAdvice[0] !== 'Tham khảo nội dung phân tích chi tiết trong báo cáo';
-
-  if (hasStrengths || hasWeaknesses || hasRecommendations || hasForecast || hasAdvice) {
-    page = addPage();
-    y = pageHeight - 80;
-    page.drawText('Bảng Tổng Hợp', { x: 60, y: y, size: 20, font: fontBold, color: brandColor });
-    y -= 30;
-
-    const leftX = 60;
-    const rightX = pageWidth / 2 + 10;
-
-    // strengths on left
-    if (hasStrengths) {
-      page.drawText('Điểm Mạnh', { x: leftX, y: y, size: 14, font: fontBold, color: rgb(0, 0.45, 0.3) });
-      let sy = y - 22;
-      for (const s of content.summary.strengths) {
-        const sLines = splitLines(`✓ ${s}`, 45);
-        for (const sLine of sLines) {
-          page.drawText(sLine, { x: leftX + 10, y: sy, size: 11, font: fontRegular, color: rgb(0.08, 0.12, 0.15) });
-          sy -= 15;
-        }
-      }
-    }
-
-    // weaknesses on right
-    if (hasWeaknesses) {
-      page.drawText('Điểm Yếu', { x: rightX, y: y, size: 14, font: fontBold, color: rgb(0.7, 0.15, 0.15) });
-      let wy = y - 22;
-      for (const w of content.summary.weaknesses) {
-        const wLines = splitLines(`• ${w}`, 45);
-        for (const wLine of wLines) {
-          page.drawText(wLine, { x: rightX + 10, y: wy, size: 11, font: fontRegular, color: rgb(0.08, 0.12, 0.15) });
-          wy -= 15;
-        }
-      }
-    }
-
-    y -= 180;
-
-    // Forecast section
-    if (hasForecast) {
-      if (y < 150) { page = addPage(); y = pageHeight - 80; }
-      page.drawText(`Dự Báo ${content.forecast.year}`, { x: 60, y: y, size: 14, font: fontBold, color: rgb(0.1, 0.35, 0.8) });
-      y -= 22;
-      for (const ptext of content.forecast.predictions) {
-        const pLines = splitLines(`→ ${ptext}`, 80);
-        for (const pLine of pLines) {
-          page.drawText(pLine, { x: 72, y: y, size: 11, font: fontRegular, color: rgb(0.08, 0.12, 0.15) });
-          y -= 15;
-          if (y < 100) { page = addPage(); y = pageHeight - 80; }
-        }
-      }
-      y -= 12;
-    }
-
-    // Recommendations and personalized advice
-    if (hasRecommendations) {
-      if (y < 100) { page = addPage(); y = pageHeight - 80; }
-      page.drawText('Lời Khuyên', { x: 60, y: y, size: 14, font: fontBold, color: rgb(0.48, 0.29, 0.88) });
-      y -= 20;
-      for (const r of content.summary.recommendations) {
-        const rLines = splitLines(`★ ${r}`, 80);
-        for (const rLine of rLines) {
-          page.drawText(rLine, { x: 72, y: y, size: 11, font: fontRegular, color: rgb(0.08, 0.12, 0.15) });
-          y -= 15;
-          if (y < 100) { page = addPage(); y = pageHeight - 80; }
-        }
-      }
-      y -= 12;
-    }
-
-    if (hasAdvice) {
-      if (y < 100) { page = addPage(); y = pageHeight - 80; }
-      for (const a of content.personalizedAdvice) {
-        const aLines = splitLines(`» ${a}`, 80);
-        for (const aLine of aLines) {
-          page.drawText(aLine, { x: 72, y: y, size: 11, font: fontRegular, color: rgb(0.08, 0.12, 0.15) });
-          y -= 15;
-          if (y < 100) { page = addPage(); y = pageHeight - 80; }
-        }
+  // If a section is about personalized advice but empty/short, populate from advice list
+  const ADVICE_KEYWORDS = [/lời khuyên/i, /cá nhân hóa/i, /ca nhan hoa/i];
+  for (let i = 0; i < preparedSections.length; i++) {
+    const h = preparedSections[i].heading || '';
+    const isAdviceSection = ADVICE_KEYWORDS.some((re) => re.test(h));
+    if (isAdviceSection) {
+      const w = countWords(preparedSections[i].content || '');
+      if (w < 60) {
+        // Build bullet list from advice array we compute below
+        // We'll convert bullets to text; paragraphize will render as <ul>
+        // Placeholder; content replaced after advice array is defined
+        preparedSections[i].content = '__INJECT_ADVICE__';
       }
     }
   }
 
-  // Thank you page
-  const thank = addPage();
-  thank.drawText('Cảm Ơn Bạn', { x: 60, y: pageHeight - 240, size: 28, font: fontBold, color: brandColor });
-  thank.drawText('Hy vọng báo cáo này mang lại giá trị và hướng đi cho bạn.', { x: 60, y: pageHeight - 280, size: 12, font: fontRegular, color: rgb(0.2, 0.25, 0.33) });
+  let sectionsHtml = '';
+  // sectionsHtml is built after advice computation below so we can inject advice list
 
-  // --- Fill TOC page with entries and page numbers ---
-  if (tocEntries.length > 0) {
-    const tocPdfPage = pdfDoc.getPage(1);
-    let tocY = pageHeight - 120;
-    for (const e of tocEntries) {
-      const entryText = `${e.title}`;
-      tocPdfPage.drawText(entryText, { x: 70, y: tocY, size: 12, font: fontRegular, color: rgb(0.08, 0.12, 0.15) });
-      const pageNumText = String(e.pageIndex + 1);
-      tocPdfPage.drawText(pageNumText, { x: pageWidth - 80, y: tocY, size: 12, font: fontRegular, color: rgb(0.5, 0.5, 0.5) });
-      tocY -= 18;
-      if (tocY < 100) break; // Avoid overflow
+  const summary = content.summary || { strengths: [], weaknesses: [], recommendations: [] };
+  const forecast = content.forecast || { year: '', predictions: [] };
+  let advice = content.personalizedAdvice || [];
+  // Ensure personalized advice has enough items for a premium feel
+  const adviceFallbackPool = [
+    'Thiết lập thói quen phản tư 10 phút mỗi ngày để tối ưu quyết định.',
+    'Xây dựng hệ thống theo dõi tiến trình với chỉ số đơn giản và nhất quán.',
+    'Dành thời gian bảo dưỡng năng lượng: ngủ đủ, vận động nhẹ, thư giãn chủ động.',
+    'Gắn mục tiêu dài hạn với các mốc ngắn hạn đo đếm được theo tuần.',
+    'Áp dụng nguyên tắc 80/20: tập trung vào việc tạo tác động lớn nhất.',
+    'Giữ nhật ký học hỏi để biến trải nghiệm thành tri thức có thể tái sử dụng.',
+  ];
+  while (advice.length < 6 && adviceFallbackPool.length) {
+    advice.push(adviceFallbackPool.shift()!);
+  }
+
+  const summaryHtml = `
+    <section class="page-break">
+      <h2>Bảng Tổng Hợp</h2>
+      <div class="grid two">
+        <div>
+          <h3 class="green">Điểm Mạnh</h3>
+          <ul>${(summary.strengths || []).map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+        </div>
+        <div>
+          <h3 class="red">Điểm Yếu</h3>
+          <ul>${(summary.weaknesses || []).map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul>
+        </div>
+      </div>
+      <div class="grid one">
+        <div>
+          <h3 class="purple">Lời Khuyên</h3>
+          <ul>${(summary.recommendations || []).map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+        </div>
+      </div>
+      ${forecast.predictions && forecast.predictions.length > 0
+        ? `<div class="grid one"><div><h3 class="blue">Dự Báo ${escapeHtml(forecast.year || '')}</h3><ul>${forecast.predictions
+            .map((p) => `<li>${escapeHtml(p)}</li>`) 
+            .join('')}</ul></div></div>`
+        : ''}
+      ${advice.length > 0
+        ? `<div class="grid one"><div><h3>Cá Nhân Hóa</h3><ul>${advice
+            .map((a) => `<li>${escapeHtml(a)}</li>`) 
+            .join('')}</ul></div></div>`
+        : ''}
+    </section>`;
+
+  const tocHtml = (preparedSections || [])
+    .map((s, i) => `<li><span class="dot"></span> ${escapeHtml(s.heading || `Mục ${i + 1}`)}</li>`)
+    .join('');
+
+  // Try to load external CSS; fallback to minimal internal if missing
+  let externalCss = '';
+  try {
+    const cssPath = path.join(process.cwd(), 'src', 'lib', 'pdf', 'styles', 'premium.css');
+    if (fs.existsSync(cssPath)) {
+      externalCss = fs.readFileSync(cssPath, 'utf8');
     }
+  } catch {}
+
+  return `<!DOCTYPE html>
+  <html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lora:wght@500;600;700&display=swap" rel="stylesheet" />
+    <style>${externalCss}</style>
+    <title>${escapeHtml(title)}</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="cover">
+        <div class="hero">
+          <h1 class="title">${escapeHtml(title)}</h1>
+          <div class="subtitle">${escapeHtml(subtitle)}</div>
+          <div class="meta">Người nhận: ${escapeHtml(fullName)} • Ngày sinh: ${escapeHtml(birthDate)}</div>
+          <div class="meta">Tạo ngày: ${escapeHtml(new Date().toLocaleDateString('vi-VN'))}</div>
+        </div>
+      </div>
+      <section class="toc">
+        <h2>Mục Lục</h2>
+        <ul class="toc-list">${tocHtml}</ul>
+      </section>
+      ${(() => {
+        // Now that we have advice array, replace any placeholders
+        const injectAdviceText = advice.length
+          ? advice.map((a) => `- ${a}`).join('\n')
+          : '- Thiết lập thói quen phản tư ngắn mỗi ngày.\n- Theo dõi tiến trình với chỉ số đơn giản.\n- Bảo dưỡng năng lượng: ngủ, vận động, thư giãn.';
+        const finalSections = preparedSections.map((s, idx) => {
+          const contentText = (s.content === '__INJECT_ADVICE__') ? injectAdviceText : (s.content || '');
+          return `
+            <section class="section avoid-break spaced">
+              <h2>${escapeHtml(s.heading || `Mục ${idx + 1}`)}</h2>
+              <div class="prose">${paragraphize(contentText)}</div>
+              ${s.highlights && s.highlights.length > 0
+                ? `<div class="card spaced"><h3>Điểm nổi bật</h3><ul>${s.highlights.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul></div>`
+                : ''}
+            </section>`;
+        }).join('\n');
+        return finalSections;
+      })()}
+      ${summaryHtml}
+      <section class="page-break">
+        <h2>Cảm Ơn Bạn</h2>
+        <div class="card spaced">
+          <p>Hy vọng báo cáo này mang lại giá trị và hướng đi cho bạn.</p>
+          <div class="muted">© ${new Date().getFullYear()} Numerous — Premium Insights</div>
+        </div>
+      </section>
+    </div>
+  </body>
+  </html>`;
+}
+
+export async function generatePdfBuffer(input: PdfGeneratorInput): Promise<Buffer> {
+  const html = buildHtml(input);
+
+  // Dynamically import to avoid bundling on edge
+  const { default: chromium } = await import('@sparticuz/chromium');
+  const { default: puppeteer } = await import('puppeteer-core');
+
+  function exists(p: string | undefined) {
+    return p && typeof p === 'string' && fs.existsSync(p) ? p : undefined;
+  }
+
+  function resolveLocalExecutable(): string | undefined {
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) return exists(process.env.PUPPETEER_EXECUTABLE_PATH);
+    if (process.env.CHROME_PATH) return exists(process.env.CHROME_PATH);
+    const platform = process.platform;
+    if (platform === 'win32') {
+      const candidates = [
+        'C\\\u005c\u005cProgram Files\\\u005c\u005cGoogle\\\u005c\u005cChrome\\\u005c\u005cApplication\\\u005c\u005cchrome.exe'.replace(/\\\\/g, '\\\\'),
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      ];
+      for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
+      }
+      return undefined;
+    }
+    if (platform === 'darwin') {
+      const candidates = [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      ];
+      for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
+      }
+      return undefined;
+    }
+    // linux
+    const candidates = [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(c)) return c;
+    }
+    return undefined;
+  }
+
+  const isServerless = Boolean(process.env.AWS_REGION || process.env.VERCEL);
+  const PDF_DEBUG = process.env.PDF_DEBUG === '1';
+  let launchOptions: any;
+
+  if (isServerless) {
+    const exec = await chromium.executablePath();
+    launchOptions = {
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: exec,
+      headless: chromium.headless,
+    };
   } else {
-    // If no sections, add a note on TOC page
-    const tocPdfPage = pdfDoc.getPage(1);
-    tocPdfPage.drawText('Nội dung báo cáo bắt đầu từ trang tiếp theo', { x: 70, y: pageHeight - 120, size: 12, font: fontRegular, color: rgb(0.5, 0.5, 0.5) });
+    const localExec = resolveLocalExecutable();
+    if (!localExec) {
+      throw new Error('Could not find a local Chrome/Chromium executable. Set CHROME_PATH or PUPPETEER_EXECUTABLE_PATH.');
+    }
+    launchOptions = {
+      executablePath: localExec,
+      headless: 'new',
+    };
   }
 
-  // --- Page numbers footer for all pages ---
-  const total = pdfDoc.getPageCount();
-  for (let i = 0; i < total; i++) {
-    const p = pdfDoc.getPage(i);
-    p.drawText(`${i + 1} / ${total}`, { x: pageWidth - 100, y: 30, size: 10, font: fontRegular, color: rgb(0.6, 0.6, 0.6) });
+  if (PDF_DEBUG) {
+    try {
+      const tmpDir = os.tmpdir();
+      const htmlPath = path.join(tmpDir, `pdf-debug-${Date.now()}.html`);
+      fs.writeFileSync(htmlPath, html, 'utf8');
+      // Log a concise summary to help diagnose missing content
+      const sectionCount = (input.content?.sections || []).length;
+      const words = html.split(/\s+/).length;
+      console.log(`[PDF_DEBUG] minPages=${input.minPages ?? 8} sectionsIn=${sectionCount} htmlWords≈${words} htmlFile=${htmlPath}`);
+    } catch (e) {
+      console.warn('[PDF_DEBUG] Failed to write debug HTML:', e);
+    }
   }
 
-  const uint8Array = await pdfDoc.save();
-  return Buffer.from(uint8Array);
+  const browser = await puppeteer.launch(launchOptions);
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const brand = input.brandName || 'Numerous Premium';
+    const headerTemplate = `
+      <div style="width:100%; font-family: Inter, Arial, sans-serif; font-size:10px; color:#6b7280; padding:4mm 8mm; display:flex; justify-content:space-between; align-items:center;">
+        <span>${brand}</span>
+        <span></span>
+      </div>`;
+    const footerTemplate = `
+      <div style="width:100%; font-family: Inter, Arial, sans-serif; font-size:10px; color:#6b7280; padding:4mm 8mm; display:flex; justify-content:space-between; align-items:center;">
+        <span>© ${new Date().getFullYear()} Numerous</span>
+        <span class="pageNumber"></span>/<span class="totalPages"></span>
+      </div>`;
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '16mm', bottom: '16mm', left: '12mm', right: '12mm' },
+      displayHeaderFooter: true,
+      headerTemplate,
+      footerTemplate,
+      preferCSSPageSize: true,
+    });
+    const buffer = Buffer.from(pdf);
+    if (PDF_DEBUG && !isServerless) {
+      try {
+        const tmpDir = os.tmpdir();
+        const pdfPath = path.join(tmpDir, `pdf-debug-${Date.now()}.pdf`);
+        fs.writeFileSync(pdfPath, buffer);
+        console.log(`[PDF_DEBUG] pdfSize=${buffer.length} bytes pdfFile=${pdfPath}`);
+      } catch (e) {
+        console.warn('[PDF_DEBUG] Failed to write debug PDF:', e);
+      }
+    }
+    return buffer;
+  } finally {
+    await browser.close();
+  }
 }

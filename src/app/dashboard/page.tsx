@@ -10,7 +10,7 @@ import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
 import PremiumBadge from '@/components/ui/PremiumBadge';
 import LogoutButton from '@/components/ui/LogoutButton';
-import { Hash, Star, Sparkles, BookOpen, Crown, ClipboardList } from 'lucide-react';
+import { Hash, Star, Sparkles, BookOpen, Crown, ClipboardList, CheckCircle, XCircle, Hourglass } from 'lucide-react';
 
 export default async function DashboardPage({
   searchParams,
@@ -99,26 +99,22 @@ export default async function DashboardPage({
 
         {/* Premium User Message */}
         {message === 'already-premium' && (
-          <div className="mb-6 p-4 bg-green-500/10 border-2 border-green-500/30 rounded-lg flex items-center space-x-3">
-            <span className="text-2xl">✓</span>
+          <div className="mb-6 p-4 bg-green-500/10 border-2 border-green-500/30 rounded-lg flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-400" />
             <div>
               <p className="font-semibold text-green-300">Bạn đã là thành viên Premium!</p>
-              <p className="text-sm text-green-200">
-                Bạn đang sử dụng đầy đủ tất cả tính năng Premium của chúng tôi.
-              </p>
+              <p className="text-sm text-green-200">Bạn đang sử dụng đầy đủ tất cả tính năng Premium của chúng tôi.</p>
             </div>
           </div>
         )}
         
         {/* Pending Payment Notification */}
         {hasPendingPayment && (
-          <div className="mb-6 p-4 bg-blue-500/10 border-2 border-blue-500/30 rounded-lg flex items-center space-x-3">
-            <span className="text-2xl">⏳</span>
+          <div className="mb-6 p-4 bg-blue-500/10 border-2 border-blue-500/30 rounded-lg flex items-center gap-3">
+            <Hourglass className="w-5 h-5 text-blue-300" />
             <div className="flex-1">
               <p className="font-semibold text-blue-300">Yêu cầu thanh toán đang chờ xử lý</p>
-              <p className="text-sm text-blue-200">
-                Chúng tôi đang xác minh thanh toán của bạn. Bạn sẽ được nâng cấp lên Premium trong vòng 5-10 phút.
-              </p>
+              <p className="text-sm text-blue-200">Chúng tôi đang xác minh thanh toán của bạn. Bạn sẽ được nâng cấp lên Premium trong vòng 5-10 phút.</p>
             </div>
           </div>
         )}
@@ -328,20 +324,15 @@ export default async function DashboardPage({
                       </p>
                     )}
                   </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      payment.status === 'verified'
-                        ? 'bg-green-100 text-green-700'
-                        : payment.status === 'rejected'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}
-                  >
-                    {payment.status === 'verified'
-                      ? '✓ Đã xác nhận'
-                      : payment.status === 'rejected'
-                      ? '✗ Từ chối'
-                      : '⏳ Đang xử lý'}
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-white/5 border border-white/10">
+                    {payment.status === 'verified' && <CheckCircle className="w-4 h-4 text-green-400" />}
+                    {payment.status === 'rejected' && <XCircle className="w-4 h-4 text-red-400" />}
+                    {payment.status === 'pending' && <Hourglass className="w-4 h-4 text-yellow-400" />}
+                    <span className={
+                      payment.status === 'verified' ? 'text-green-300' : payment.status === 'rejected' ? 'text-red-300' : 'text-yellow-300'
+                    }>
+                      {payment.status === 'verified' ? 'Đã xác nhận' : payment.status === 'rejected' ? 'Từ chối' : 'Đang xử lý'}
+                    </span>
                   </span>
                 </div>
               ))}

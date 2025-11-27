@@ -6,6 +6,10 @@
 import OpenAI from 'openai';
 import { NumerologyNumbers, HoroscopeResult } from '@/types';
 
+// Model configuration with sane defaults; override via env if needed
+const PREMIUM_MODEL = process.env.OPENAI_MODEL_PREMIUM || 'gpt-4.1';
+const FAST_MODEL = process.env.OPENAI_MODEL_FAST || 'gpt-4o-mini';
+
 // Khởi tạo OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -316,7 +320,7 @@ export async function generateNumerologyAnalysis(
     const prompt = createNumerologyPrompt(name, numbers, isPremium);
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5',
+      model: isPremium ? PREMIUM_MODEL : FAST_MODEL,
       messages: [
         {
           role: 'system',
@@ -330,10 +334,19 @@ export async function generateNumerologyAnalysis(
       ],
       max_completion_tokens: isPremium ? 10000 : 4000,
     });
+    try {
+      // Light observability for production triage
+      // eslint-disable-next-line no-console
+      console.log('OpenAI numerology completion', {
+        model: completion.model,
+        usage: completion.usage,
+        finish: completion.choices?.[0]?.finish_reason,
+      });
+    } catch {}
 
     return completion.choices[0]?.message?.content || 'Không thể tạo phân tích lúc này.';
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('Error calling OpenAI API (numerology):', error);
     throw new Error('Không thể kết nối với dịch vụ AI. Vui lòng thử lại sau.');
   }
 }
@@ -350,7 +363,7 @@ export async function generateHoroscopeAnalysis(
     const prompt = createHoroscopePrompt(birthDate, result, isPremium);
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5',
+      model: isPremium ? PREMIUM_MODEL : FAST_MODEL,
       messages: [
         {
           role: 'system',
@@ -364,10 +377,18 @@ export async function generateHoroscopeAnalysis(
       ],
       max_completion_tokens: isPremium ? 8000 : 3000,
     });
+    try {
+      // eslint-disable-next-line no-console
+      console.log('OpenAI horoscope completion', {
+        model: completion.model,
+        usage: completion.usage,
+        finish: completion.choices?.[0]?.finish_reason,
+      });
+    } catch {}
 
     return completion.choices[0]?.message?.content || 'Không thể tạo phân tích lúc này.';
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('Error calling OpenAI API (horoscope):', error);
     throw new Error('Không thể kết nối với dịch vụ AI. Vui lòng thử lại sau.');
   }
 }
@@ -389,7 +410,7 @@ Viết bằng tiếng Việt, ngắn gọn (200-300 từ), tích cực và đầ
 `;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5-mini',
+      model: FAST_MODEL,
       messages: [
         {
           role: 'system',
@@ -444,7 +465,7 @@ Yêu cầu:
 `;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-5',
+      model: PREMIUM_MODEL,
       messages: [
         {
           role: 'system',

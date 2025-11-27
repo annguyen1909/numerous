@@ -3,7 +3,7 @@
  * Log PDF exports to database
  */
 
-import { supabaseServer } from './server';
+import { getSupabaseServer } from './server';
 
 export interface PdfExportLog {
   id?: string;
@@ -20,7 +20,7 @@ export interface PdfExportLog {
  * Log PDF export to database
  */
 export async function logPdfExport(log: PdfExportLog): Promise<void> {
-  const { error } = await supabaseServer
+  const { error } = await getSupabaseServer()
     .from('pdf_exports')
     .insert({
       user_id: log.user_id,
@@ -41,7 +41,7 @@ export async function logPdfExport(log: PdfExportLog): Promise<void> {
  * Get user's PDF export history
  */
 export async function getUserPdfExports(userId: string): Promise<PdfExportLog[]> {
-  const { data, error } = await supabaseServer
+  const { data, error } = await getSupabaseServer()
     .from('pdf_exports')
     .select('*')
     .eq('user_id', userId)
@@ -59,7 +59,7 @@ export async function getUserPdfExports(userId: string): Promise<PdfExportLog[]>
  * Delete PDF export log
  */
 export async function deletePdfExportLog(exportId: string): Promise<void> {
-  const { error } = await supabaseServer
+  const { error } = await getSupabaseServer()
     .from('pdf_exports')
     .delete()
     .eq('id', exportId);

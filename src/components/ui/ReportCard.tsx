@@ -7,6 +7,8 @@
 
 import { NumerologyResult, HoroscopeResult } from '@/types';
 import PremiumBadge from '../ui/PremiumBadge';
+import PremiumUpsellDialog from '../ui/PremiumUpsellDialog';
+import { useState } from 'react';
 import { Bot, Hash, Target, Palette, Sparkles, AlertTriangle, Briefcase, Star, CheckCircle } from 'lucide-react';
 
 interface ReportCardProps {
@@ -17,6 +19,22 @@ interface ReportCardProps {
 }
 
 export default function ReportCard({ type, data, content, isPremium = false }: ReportCardProps) {
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('overview');
+
+  const onTabClick = (id: string) => {
+    setActiveTab(id);
+    const el = typeof window !== 'undefined' ? document.getElementById(`section-${id}`) : null;
+    if (el) {
+      const bar = typeof window !== 'undefined' ? document.getElementById('tabs-bar') : null;
+      const stickyOffset = (bar?.offsetHeight ?? 64) + 8; // dynamic height + small gap
+      const y = el.getBoundingClientRect().top + window.scrollY - stickyOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+      try {
+        history.replaceState(null, '', `#${id}`);
+      } catch {}
+    }
+  };
   if (type === 'numerology') {
     const numerologyData = data as NumerologyResult;
 
@@ -112,7 +130,39 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
           </div>
         )}
 
-        {/* AI Generated Content - MOVED TO TOP for prominence */}
+        {/* Tabs - sticky and scrollable */}
+        <div id="tabs-bar" className="sticky top-0 z-20 -mx-4 px-4 pb-4 bg-[#1a1a1f]/40 backdrop-blur border-b border-[#3f3f46]/50">
+          <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'overview', label: 'Tổng Quan' },
+            { key: 'core', label: 'Các Số Chính' },
+            { key: 'strengths', label: 'Điểm Mạnh' },
+            { key: 'weaknesses', label: 'Điểm Yếu' },
+            { key: 'lifePath', label: 'Đường Đời' },
+            { key: 'soul', label: 'Linh Hồn' },
+            { key: 'expression', label: 'Biểu Đạt' },
+            { key: 'personality', label: 'Tính Cách' },
+            { key: 'birthday', label: 'Ngày Sinh' },
+            { key: 'career', label: 'Nghề Nghiệp' },
+            { key: 'lucky', label: 'May Mắn' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => onTabClick(t.key)}
+              className={`px-4 py-2 rounded-full text-sm border transition-colors whitespace-nowrap ${
+                activeTab === t.key
+                  ? 'bg-[#6B4BFF]/30 border-[#6B4BFF] text-[#fafafa]'
+                  : 'bg-transparent border-[#3f3f46] text-[#a1a1aa] hover:text-[#fafafa]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+          </div>
+        </div>
+
+        {/* AI Generated Content - Overview */}
+        <div id="section-overview"></div>
         {(() => {
           const hasValidContent = content && content.trim().length > 0 && !content.includes('Không thể tạo phân tích');
           const displayContent = hasValidContent ? content : `Dựa trên phân tích thần số học chi tiết, con số Đường Đời ${numerologyData.lifePathNumber} của bạn cho thấy một hành trình cuộc sống đầy ý nghĩa. Bạn được sinh ra với những đặc điểm độc đáo và khả năng đặc biệt mà ít người có được.\n\nVề tính cách, sự kết hợp giữa Số Biểu Đạt ${numerologyData.expressionNumber} và Số Tính Cách ${numerologyData.personalityNumber} tạo nên một con người đa chiều. Bên ngoài, bạn thể hiện những phẩm chất nhất định, nhưng bên trong, Số Linh Hồn ${numerologyData.soulUrgeNumber} tiết lộ những khao khát sâu sắc hơn. Sự cân bằng giữa bề ngoài và nội tâm này là chìa khóa để bạn sống một cuộc đời trọn vẹn.\n\nTrong các mối quan hệ, bạn mang đến những giá trị độc đáo. Khả năng kết nối và thấu hiểu của bạn giúp xây dựng những mối quan hệ ý nghĩa. Tuy nhiên, cần lưu ý rằng mỗi mối quan hệ đòi hỏi sự cân bằng giữa cho và nhận, giữa độc lập và phụ thuộc.\n\nVề sự nghiệp, con số của bạn chỉ ra những lĩnh vực mà bạn có thể phát huy tối đa tiềm năng. Những công việc phù hợp không chỉ mang lại thu nhập mà còn giúp bạn cảm thấy có ý nghĩa và được thỏa mãn. Hãy tìm kiếm những cơ hội phù hợp với bản chất thật của bạn.\n\nCuối cùng, hành trình phát triển bản thân là một quá trình không ngừng nghỉ. Hãy chấp nhận cả điểm mạnh và điểm yếu của mình, học hỏi từ mọi trải nghiệm và luôn hướng tới phiên bản tốt nhất của chính mình. Con số của bạn là kim chỉ nam, nhưng quyết định cuối cùng vẫn nằm trong tay bạn.`;
@@ -139,6 +189,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         })()}
 
         {/* Core Numbers */}
+        <div id="section-core"></div>
         <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-500/30">
           <h3 className="text-2xl font-bold text-[#fafafa] mb-6 text-center">
             <Hash className="w-5 h-5 inline-block mr-2" />
@@ -178,9 +229,27 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
           </div>
         </div>
 
+        {/* Premium gate: lock advanced tabs for free accounts */}
+        {!isPremium && activeTab !== 'overview' && activeTab !== 'core' && (
+          <div className="bg-[#1a1a1f]/80 rounded-xl p-8 border-2 border-yellow-500/30 text-center">
+            <h4 className="text-xl font-bold text-[#fafafa] mb-2">
+              Nội dung nâng cao dành cho Premium
+            </h4>
+            <p className="text-[#d4d4d8] mb-6">Nâng cấp để mở khóa các phân tích chuyên sâu, lời khuyên cá nhân hóa và nhiều nội dung hữu ích khác.</p>
+            <button
+              onClick={() => setUpsellOpen(true)}
+              className="inline-block px-6 py-3 bg-linear-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all"
+            >
+              Nâng Cấp Premium
+            </button>
+            <PremiumUpsellDialog open={upsellOpen} onOpenChange={setUpsellOpen} />
+          </div>
+        )}
+
         {/* Detailed Analysis Sections */}
         <div className="space-y-6">
           {/* Life Path Number - Deep Analysis */}
+          <div id="section-lifePath"></div>
           <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border-l-4 border-purple-600">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">
@@ -196,6 +265,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
           </div>
 
           {/* Expression Number - Deep Analysis */}
+          <div id="section-expression"></div>
           <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border-l-4 border-pink-600">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-pink-600 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">
@@ -211,6 +281,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
           </div>
 
           {/* Soul Urge Number - Deep Analysis */}
+          <div id="section-soul"></div>
           <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border-l-4 border-blue-600">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">
@@ -226,6 +297,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
           </div>
 
           {/* Personality Number - Deep Analysis */}
+          <div id="section-personality"></div>
           <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border-l-4 border-indigo-600">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">
@@ -241,6 +313,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
           </div>
 
           {/* Birthday Number - Deep Analysis */}
+          <div id="section-birthday"></div>
           <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border-l-4 border-purple-500">
             <div className="flex items-center mb-4">
               <div className="w-12 h-12 bg-purple-500 text-white rounded-full flex items-center justify-center text-xl font-bold mr-4">
@@ -257,6 +330,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         </div>
 
         {/* Lucky Numbers & Colors - with descriptions */}
+        <div id="section-lucky"></div>
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-md border border-[#3f3f46]">
             <h4 className="text-lg font-bold text-[#fafafa] mb-4 flex items-center">
@@ -300,6 +374,8 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         </div>
 
         {/* Strengths & Weaknesses */}
+        <div id="section-strengths"></div>
+        <div id="section-weaknesses"></div>
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-green-500/10 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
             <h4 className="text-lg font-bold text-green-400 mb-4 flex items-center">
@@ -359,6 +435,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         </div>
 
         {/* Career Suggestions */}
+        <div id="section-career"></div>
         <div className="bg-blue-500/10 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
           <h4 className="text-lg font-bold text-blue-400 mb-4 flex items-center">
             <Briefcase className="w-5 h-5 inline-block mr-2" />
@@ -403,12 +480,13 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
               <CheckCircle className="w-4 h-4 inline-block mr-2 text-green-500" />
               File PDF chuyên nghiệp để lưu trữ
             </p>
-            <a
-              href="/premium"
+            <button
+              onClick={() => setUpsellOpen(true)}
               className="inline-block px-8 py-4 bg-linear-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all transform hover:scale-105 shadow-xl"
             >
               Nâng Cấp Premium Ngay
-            </a>
+            </button>
+            <PremiumUpsellDialog open={upsellOpen} onOpenChange={setUpsellOpen} />
           </div>
         )}
       </div>
@@ -426,7 +504,32 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         </div>
       )}
 
+      {/* Tabs for Horoscope - sticky */}
+      <div id="tabs-bar" className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-[#0f0f14]/80 backdrop-blur border-b border-[#3f3f46]/50">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'overview', label: 'Tổng Quan' },
+            { key: 'zodiac', label: 'Thông Tin Cung Mệnh' },
+            { key: 'lucky', label: 'Thời Kỳ May Mắn' },
+            { key: 'challenges', label: 'Thách Thức' },
+          ].map((t) => (
+            <button
+              key={t.key}
+              onClick={() => onTabClick(t.key)}
+              className={`px-4 py-2 rounded-full text-sm border transition-colors whitespace-nowrap ${
+                activeTab === t.key
+                  ? 'bg-[#6B4BFF]/30 border-[#6B4BFF] text-white'
+                  : 'bg-transparent border-[#3f3f46] text-[#a1a1aa] hover:text-[#fafafa]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* AI Content for Horoscope - Enhanced formatting with fallback */}
+      <div id="section-overview"></div>
       {(() => {
         const hasValidContent = content && content.trim().length > 0 && !content.includes('Không thể tạo phân tích');
         const displayContent = hasValidContent ? content : `Dựa trên phân tích tử vi chi tiết của bạn, cung hoàng đạo ${horoscopeData.zodiacSign} kết hợp với con giáp ${horoscopeData.chineseZodiac} và ngũ hành ${horoscopeData.element} tạo nên một bản mệnh độc đáo và đầy tiềm năng.\n\n## BẢN MỆNH CỦA BẠN\n\nNgười sinh vào ${horoscopeData.zodiacSign} mang những đặc điểm tính cách rất riêng biệt. Sự kết hợp với con giáp ${horoscopeData.chineseZodiac} càng làm tăng thêm những nét đặc trưng trong cách bạn nhìn nhận và sống cuộc đời. Ngũ hành ${horoscopeData.element} chi phối bản mệnh của bạn ảnh hưởng sâu sắc đến tính cách, sức khỏe và hướng phát triển trong cuộc sống.\n\n## VẬN THẾ NĂM NAY\n\nNăm nay là một năm đầy biến động và cơ hội đối với bạn. Những tháng may mắn của bạn bao gồm ${horoscopeData.luckyPeriods.join(', ')}, đây là thời điểm tốt để bạn thực hiện những kế hoạch quan trọng, đưa ra quyết định lớn hoặc khởi đầu những dự án mới. Hãy tận dụng tối đa những giai đoạn thuận lợi này.\n\nTuy nhiên, bên cạnh những thời kỳ thuận lợi, bạn cũng cần cẩn trọng trong các tháng khác. Đừng vội vàng đưa ra quyết định quan trọng nếu không cảm thấy sẵn sàng. Sự kiên nhẫn và quan sát kỹ lưỡng sẽ giúp bạn tránh được nhiều rắc rối không đáng có.\n\n## TÌNH YÊU VÀ CÁC MỐI QUAN HỆ\n\nTrong các mối quan hệ, bạn mang những phẩm chất đặc biệt từ cung hoàng đạo của mình. Khả năng giao tiếp, sự thấu hiểu và cách bạn thể hiện tình cảm đều mang dấu ấn riêng của ${horoscopeData.zodiacSign}. Để có được hạnh phúc trong tình yêu, bạn cần học cách cân bằng giữa những gì bạn mong muốn và những gì người khác cần.\n\nCác mối quan hệ gia đình và bạn bè cũng đóng vai trò quan trọng trong cuộc sống của bạn. Hãy dành thời gian chăm sóc và nuôi dưỡng những mối quan hệ này, vì chúng sẽ là nguồn hỗ trợ vững chắc khi bạn cần.\n\n## SỰ NGHIỆP VÀ TÀI CHÍNH\n\nNgũ hành ${horoscopeData.element} chỉ ra những lĩnh vực nghề nghiệp mà bạn có thể phát huy tối đa năng lực. Những công việc liên quan đến ngũ hành này thường mang lại thành công và sự thỏa mãn cho bạn. Đừng ngại thử nghiệm và khám phá những cơ hội mới phù hợp với bản chất của mình.\n\nVề tài chính, năm nay mang đến cả cơ hội và thách thức. Hãy quản lý chi tiêu một cách thông minh, tiết kiệm cho tương lai nhưng cũng đừng quá kiệm lời đến mức ảnh hưởng đến chất lượng cuộc sống. Những khoản đầu tư nên được cân nhắc kỹ lưỡng, đặc biệt là trong những tháng không nằm trong danh sách may mắn của bạn.\n\n## SỨC KHỎE VÀ TINH THẦN\n\nSức khỏe là tài sản quý giá nhất. Dựa trên ngũ hành ${horoscopeData.element}, bạn cần đặc biệt chú ý đến một số bộ phận cơ thể nhất định. Chế độ ăn uống cân bằng, tập luyện đều đặn và nghỉ ngơi hợp lý sẽ giúp bạn duy trì sức khỏe tốt quanh năm.\n\nSức khỏe tinh thần cũng không kém phần quan trọng. Trong thời đại hiện đại đầy áp lực, hãy tìm cho mình những cách thức giải tỏa căng thẳng phù hợp. Thiền định, yoga, hoặc đơn giản là dành thời gian cho sở thích cá nhân đều có thể giúp bạn cân bằng tinh thần.\n\n## LỜI KHUYÊN PHÁT TRIỂN\n\nHành trình phát triển bản thân là một quá trình không ngừng nghỉ. Hãy đặt ra những mục tiêu rõ ràng và thực tế cho bản thân, sau đó kiên trì theo đuổi chúng. Đừng so sánh mình với người khác, mỗi người có một lộ trình riêng và thời điểm phát triển khác nhau.\n\nHọc cách chấp nhận cả thành công lẫn thất bại, vì cả hai đều là những bài học quý giá trong cuộc sống. Sự khiêm tốn khi thành công và sự kiên cường khi thất bại sẽ giúp bạn trưởng thành hơn mỗi ngày.\n\nCuối cùng, hãy tin tưởng vào trực giác của mình. Là người thuộc cung ${horoscopeData.zodiacSign}, bạn có những khả năng cảm nhận đặc biệt. Khi phải đối mặt với những quyết định khó khăn, hãy lắng nghe tiếng nói nội tâm - nó thường dẫn dắt bạn đến con đường đúng đắn.`;
@@ -489,30 +592,47 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
         );
       })()}
 
+      {/* Premium gate for Horoscope */}
+      {!isPremium && activeTab !== 'overview' && (
+        <div className="bg-[#1a1a1f]/80 rounded-xl p-8 border-2 border-yellow-500/30 text-center">
+          <h4 className="text-xl font-bold text-[#fafafa] mb-2">Nội dung nâng cao dành cho Premium</h4>
+          <p className="text-[#d4d4d8] mb-6">Nâng cấp để xem đầy đủ các phần Tử vi chi tiết, thời kỳ may mắn và lời khuyên chuyên sâu.</p>
+          <button
+            onClick={() => setUpsellOpen(true)}
+            className="inline-block px-6 py-3 bg-linear-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-semibold hover:from-yellow-500 hover:to-orange-600 transition-all"
+          >
+            Nâng Cấp Premium
+          </button>
+          <PremiumUpsellDialog open={upsellOpen} onOpenChange={setUpsellOpen} />
+        </div>
+      )}
+
       {/* Zodiac Info */}
-      <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-blue-500/30">
-        <h3 className="text-2xl font-bold text-[#fafafa] mb-6 text-center">
-          <Star className="w-5 h-5 inline-block mr-2" fill="currentColor" />
-          Thông Tin Tử Vi Của Bạn
-        </h3>
-        <div className="grid md:grid-cols-3 gap-4 text-center">
-          <div>
-            <p className="text-sm text-[#a1a1aa] mb-2">Cung Hoàng Đạo</p>
-            <p className="text-xl font-bold text-[#fafafa]">{horoscopeData.zodiacSign}</p>
-          </div>
-          <div>
-            <p className="text-sm text-[#a1a1aa] mb-2">Con Giáp</p>
-            <p className="text-xl font-bold text-[#fafafa]">{horoscopeData.chineseZodiac}</p>
-          </div>
-          <div>
-            <p className="text-sm text-[#a1a1aa] mb-2">Ngũ Hành</p>
-            <p className="text-xl font-bold text-[#fafafa]">{horoscopeData.element}</p>
+      <div id="section-zodiac"></div>
+        <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-blue-500/30">
+          <h3 className="text-2xl font-bold text-[#fafafa] mb-6 text-center">
+            <Star className="w-5 h-5 inline-block mr-2" fill="currentColor" />
+            Thông Tin Tử Vi Của Bạn
+          </h3>
+          <div className="grid md:grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-sm text-[#a1a1aa] mb-2">Cung Hoàng Đạo</p>
+              <p className="text-xl font-bold text-[#fafafa]">{horoscopeData.zodiacSign}</p>
+            </div>
+            <div>
+              <p className="text-sm text-[#a1a1aa] mb-2">Con Giáp</p>
+              <p className="text-xl font-bold text-[#fafafa]">{horoscopeData.chineseZodiac}</p>
+            </div>
+            <div>
+              <p className="text-sm text-[#a1a1aa] mb-2">Ngũ Hành</p>
+              <p className="text-xl font-bold text-[#fafafa]">{horoscopeData.element}</p>
+            </div>
           </div>
         </div>
-      </div>
+      
 
       {/* Lucky Periods & Advice */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div id="section-lucky"></div>
         <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-md border border-[#3f3f46]">
           <h4 className="text-lg font-bold text-[#fafafa] mb-4 flex items-center"><Sparkles className="w-5 h-5 mr-2" /> Thời Kỳ May Mắn</h4>
           <ul className="space-y-2">
@@ -524,7 +644,9 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
             ))}
           </ul>
         </div>
+      
 
+      <div id="section-challenges"></div>
         <div className="bg-[#1a1a1f]/80 backdrop-blur-sm rounded-xl p-6 shadow-md border border-[#3f3f46]">
           <h4 className="text-lg font-bold text-[#fafafa] mb-4 flex items-center"><AlertTriangle className="w-5 h-5 mr-2" /> Thách Thức</h4>
           <ul className="space-y-2">
@@ -536,7 +658,7 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
             ))}
           </ul>
         </div>
-      </div>
+      
 
 
 
@@ -549,12 +671,13 @@ export default function ReportCard({ type, data, content, isPremium = false }: R
           <p className="text-[#d4d4d8] mb-6">
             Nâng cấp Premium để nhận dự đoán chi tiết 12 tháng và file PDF chuyên nghiệp!
           </p>
-          <a
-            href="/premium"
+          <button
+            onClick={() => setUpsellOpen(true)}
             className="inline-block px-8 py-4 bg-linear-to-r from-yellow-400 to-orange-500 text-white rounded-lg font-bold text-lg hover:from-yellow-500 hover:to-orange-600 transition-all transform hover:scale-105 shadow-xl"
           >
             Nâng Cấp Premium Ngay
-          </a>
+          </button>
+          <PremiumUpsellDialog open={upsellOpen} onOpenChange={setUpsellOpen} />
         </div>
       )}
     </div>

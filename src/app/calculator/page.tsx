@@ -10,8 +10,9 @@ import { useSession } from 'next-auth/react';
 import CalculatorForm from '@/components/forms/CalculatorForm';
 import ReportCard from '@/components/ui/ReportCard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { FormSkeleton } from '@/components/ui/LoadingSkeleton';
 import { NumerologyInput, NumerologyResult, ApiResponse } from '@/types';
-import { BarChart3, Target, Lock } from 'lucide-react';
+import { BarChart3, Target, Lock, Zap } from 'lucide-react';
 
 export default function CalculatorPage() {
   const { data: session } = useSession();
@@ -75,7 +76,14 @@ export default function CalculatorPage() {
           <div className="lg:col-span-2">
             <div className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-2xl shadow-lg p-6 lg:sticky lg:top-24">
               <h2 className="text-2xl font-bold text-[#fafafa] mb-6">Nhập Thông Tin</h2>
-              <CalculatorForm onSubmit={handleSubmit} isLoading={isLoading} />
+              {isLoading ? (
+                <FormSkeleton />
+              ) : (
+                <CalculatorForm onSubmit={handleSubmit} isLoading={isLoading} />
+              )}
+              <p className="mt-4 text-sm text-[#a1a1aa]">
+                Lưu ý: Tên đầy đủ không dấu, ngày sinh định dạng YYYY-MM-DD.
+              </p>
             </div>
           </div>
 
@@ -168,7 +176,7 @@ export default function CalculatorPage() {
 
           <div className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-xl p-6 shadow-md">
             <div className="w-12 h-12 bg-[#FFAC33]/20 rounded-lg flex items-center justify-center mb-4">
-              <span className="text-2xl">⚡</span>
+              <Zap className="w-6 h-6 text-[#FFAC33]" />
             </div>
             <h3 className="text-lg font-bold text-[#fafafa] mb-2">Nhanh Chóng</h3>
             <p className="text-sm text-[#a1a1aa]">

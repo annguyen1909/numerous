@@ -13,6 +13,9 @@ import { uploadPdfToSupabase } from '@/lib/supabase/storage';
 import { logPdfExport } from '@/lib/supabase/database';
 import { z } from 'zod';
 
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 // Input validation schema
 const ExportPdfSchema = z.object({
   fullName: z.string().min(1, 'Họ tên không được để trống'),
@@ -92,11 +95,18 @@ export async function POST(request: NextRequest) {
 
     // 6. Generate PDF from content
     console.log('📄 Generating PDF...');
+    if (process.env.PDF_DEBUG === '1') {
+      const sec = Array.isArray(premiumContent.sections) ? premiumContent.sections.length : 0;
+      const heads = (premiumContent.sections || []).slice(0, 6).map((s: any, i: number) => `${i+1}. ${(s.heading||'').toString().slice(0,60)}`);
+      console.log('[PDF_DEBUG] content sections=', sec, 'headings=', heads);
+    }
     const pdfBuffer = await generatePdfBuffer({
       fullName,
       birthDate,
       readingType,
       content: premiumContent,
+      minPages: 8,
+      brandName: 'Numerous Premium'
     });
 
     // 7. Upload PDF to Supabase Storage

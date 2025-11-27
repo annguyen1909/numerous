@@ -10,8 +10,9 @@ import { useSession } from 'next-auth/react';
 import HoroscopeForm from '@/components/forms/HoroscopeForm';
 import ReportCard from '@/components/ui/ReportCard';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { HoroscopeInput, HoroscopeResult, ApiResponse } from '@/types';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, XCircle } from 'lucide-react';
 
 export default function HoroscopePage() {
   const { data: session } = useSession();
@@ -82,25 +83,13 @@ export default function HoroscopePage() {
           {/* Right: Results */}
           <div className="lg:col-span-3">
             {isLoading && (
-              <div className="bg-[#1a1a1f]/50 backdrop-blur-sm border border-[#3f3f46]/40 rounded-2xl shadow-lg p-12">
-                <LoadingSpinner message="Đang xem tử vi cho bạn... Vui lòng đợi trong giây lát." />
-              </div>
+              <CardSkeleton />
             )}
 
             {error && (
               <div className="bg-red-500/10 border-2 border-red-500/30 rounded-2xl p-6">
-                <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-6 h-6 text-red-400 shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                <div className="flex items-start gap-3">
+                  <XCircle className="w-6 h-6 text-red-400 mt-0.5" />
                   <div>
                     <h3 className="text-lg font-semibold text-red-300 mb-2">Có lỗi xảy ra</h3>
                     <p className="text-red-200">{error}</p>

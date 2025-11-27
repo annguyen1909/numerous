@@ -9,7 +9,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/db/prisma';
 import Link from 'next/link';
 import PremiumBadge from '@/components/ui/PremiumBadge';
-import { Hash, Star, ClipboardList } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
+import { Hash, Star } from 'lucide-react';
 
 export default async function ReportsPage() {
   const session = await getServerSession(authOptions);
@@ -139,24 +140,26 @@ export default async function ReportsPage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <ClipboardList className="w-16 h-16 mb-4 mx-auto text-[#6B4BFF]" />
-              <p className="text-[#a1a1aa] mb-4">Bạn chưa có báo cáo nào</p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link
-                  href="/calculator"
-                  className="inline-block px-6 py-3 bg-[#6B4BFF] text-white rounded-lg font-semibold hover:bg-[#8B5CF6] transition-colors"
-                >
-                  Tạo báo cáo Thần Số Học
-                </Link>
-                <Link
-                  href="/tu-vi"
-                  className="inline-block px-6 py-3 bg-[#8B5CF6] text-white rounded-lg font-semibold hover:bg-[#6B4BFF] transition-colors"
-                >
-                  Tạo báo cáo Tử Vi
-                </Link>
-              </div>
-            </div>
+            <EmptyState
+              title="Bạn chưa có báo cáo nào"
+              description="Tạo báo cáo Thần số học hoặc Tử vi để bắt đầu theo dõi và lưu trữ kết quả của bạn."
+              action={
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link
+                    href="/calculator"
+                    className="inline-block px-6 py-3 bg-[#6B4BFF] text-white rounded-lg font-semibold hover:bg-[#8B5CF6] transition-colors"
+                  >
+                    Tạo báo cáo Thần Số Học
+                  </Link>
+                  <Link
+                    href="/tu-vi"
+                    className="inline-block px-6 py-3 bg-[#8B5CF6] text-white rounded-lg font-semibold hover:bg-[#6B4BFF] transition-colors"
+                  >
+                    Tạo báo cáo Tử Vi
+                  </Link>
+                </div>
+              }
+            />
           )}
         </div>
 

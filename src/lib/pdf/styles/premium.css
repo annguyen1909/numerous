@@ -1,0 +1,64 @@
+/* Premium PDF Stylesheet */
+
+@page { size: A4; margin: 18mm 16mm; }
+
+html, body {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', 'Noto Sans CJK', sans-serif;
+  color: #0F172A;
+}
+
+/* Typography */
+h1, h2, h3, h4 { font-family: 'Lora', Georgia, serif; margin: 0 0 8px; }
+h1 { font-size: 28px; color: #0F172A; }
+h2 { font-size: 22px; color: #1E293B; }
+h3 { font-size: 16px; color: #334155; }
+p { line-height: 1.65; margin: 0 0 10px; color: #334155; }
+ul { margin: 8px 0 14px 20px; padding: 0; }
+li { margin: 6px 0; }
+
+/* Layout */
+.container { max-width: 720px; margin: 0 auto; }
+.page { break-inside: avoid; }
+.page-break { page-break-before: always; }
+
+/* Cover */
+.cover { page-break-after: always; }
+.hero {
+  background: linear-gradient(135deg, #0F172A, #1E293B);
+  color: #E2E8F0;
+  border-radius: 12px;
+  padding: 26mm 18mm 20mm;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.25);
+}
+.title { font-size: 36px; letter-spacing: 0.3px; color: #F8FAFC; }
+.subtitle { color: #CBD5E1; margin-top: 6px; }
+.meta { color: #94A3B8; margin-top: 6px; font-size: 12px; }
+
+/* Table of contents */
+.toc { page-break-after: always; }
+.toc-list { list-style: none; margin: 0; padding: 0; }
+.toc-item { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: #334155; }
+.dot { width: 6px; height: 6px; background: #64748B; border-radius: 999px; display: inline-block; }
+
+/* Sections */
+.section { margin: 0 0 14px; }
+.section h2 { margin-bottom: 8px; }
+.prose { color: #1F2937; }
+.card { border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px 16px; background: #FFFFFF; box-shadow: 0 1px 4px rgba(2,6,23,0.05); }
+.callout { border-left: 3px solid #6366F1; background: #EEF2FF; padding: 10px 12px; color: #3730A3; border-radius: 6px; }
+.sep { height: 1px; background: #E2E8F0; margin: 10px 0; }
+
+/* Grids */
+.grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-one { display: block; }
+
+/* Summary blocks */
+.muted { color: #64748B; font-size: 12px; }
+.green { color: #059669; }
+.red { color: #DC2626; }
+.purple { color: #6D28D9; }
+.blue { color: #2563EB; }
+
+/* Print safety */
+.avoid-break { break-inside: avoid; page-break-inside: avoid; }
+.spaced { margin-top: 8px; margin-bottom: 8px; }

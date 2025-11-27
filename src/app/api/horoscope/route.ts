@@ -10,6 +10,7 @@ import { generateHoroscopeAnalysis } from '@/lib/utils/openai';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/db/prisma';
+import { assertWithinDailyQuota, computeEntitlements } from '@/lib/auth/entitlements';
 
 // Validation schema
 const horoscopeInputSchema = z.object({
@@ -21,9 +22,29 @@ const horoscopeInputSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user session to check premium status
+    // Get user session and entitlements
     const session = await getServerSession(authOptions);
-    const isPremium = session?.user ? (session.user as any).isPremium || false : false;
+    const userId = (session?.user as any)?.id as string | undefined;
+    let isPremium = false;
+    if (userId) {
+      try {
+        const ent = await computeEntitlements(userId);
+        isPremium = ent.isPremiumActive;
+        await assertWithinDailyQuota(userId);
+      } catch (e: any) {
+        if (e?.code === 'FREE_DAILY_LIMIT_REACHED') {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Bạn đã dùng hết lượt tạo miễn phí hôm nay.',
+              code: e.code,
+            },
+            { status: 429 }
+          );
+        }
+        throw e;
+      }
+    }
 
     // Parse and validate input
     const body = await request.json();
