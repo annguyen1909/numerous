@@ -93,13 +93,13 @@ export async function GET(request: NextRequest) {
 
     // 7. Generate PDF from report content
     console.log('📄 Generating PDF for report:', reportId);
-    if (process.env.PDF_DEBUG === '1') {
-      console.log('[PDF_DEBUG] raw content length=', (contentText||'').length, 'paragraphs=', paragraphs.length);
-    }
     
     // Split content into logical sections for better PDF readability
     const contentText = report.content;
     const paragraphs = contentText.split(/\n\n+/);
+    if (process.env.PDF_DEBUG === '1') {
+      console.log('[PDF_DEBUG] raw content length=', (contentText || '').length, 'paragraphs=', paragraphs.length);
+    }
     
     // Group paragraphs into sections (every 3-4 paragraphs = 1 section)
     const sections: any[] = [];
